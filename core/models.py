@@ -17,7 +17,10 @@ class Vendor(models.Model):
     contact_details = models.TextField()
     bank_details = models.TextField()
     shipping_policy = models.TextField()
-    return_policy = models.TextField()    
+    return_policy = models.TextField()
+
+    def __str__(self):
+        return self.user.name   
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -29,16 +32,19 @@ class Category(models.Model):
 
 
 class Product(models.Model):
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField()
     image = models.ImageField(upload_to='products')
+    is_flash_sale = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
+    
+    
 
     def __str__(self):
         return self.name
@@ -154,5 +160,4 @@ class Refund(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=100)
     requested_at = models.DateTimeField(auto_now_add=True)
-    processed_at = models.DateTimeField(null=True, blank=True)              
-            
+    processed_at = models.DateTimeField(null=True, blank=True)
