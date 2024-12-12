@@ -1,4 +1,5 @@
 from django.urls import path, include
+from .mpesa import mpesa_callback, create_order
 from rest_framework import routers
 from .views import (UserViewSet, VendorViewSet, CategoryViewSet, ProductViewSet,
     OrderViewSet, OrderItemViewSet, CartViewSet, CartItemViewSet, ShippingViewSet,
@@ -33,4 +34,6 @@ router.register(r'refunds', RefundViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('create-order/', create_order, name='create_order'),
+    path('mpesa-callback', mpesa_callback, name='mpesa-calback'),
 ]

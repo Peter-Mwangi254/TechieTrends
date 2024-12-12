@@ -149,4 +149,68 @@ def mpesa_callback(request):
 
     logger.warning('Invalid request method')
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
-           
+
+@csrf_exempt
+def create_order(request):
+    logger.info('create_order called')
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            full_name = data.get('full_name')
+            email = data.get('email')
+            phone = data.get('phone')
+            country = data.get('country')
+            state = data.get('state')
+            payment_method = data.get('payment_method')
+            total_amount = data.get('total_amount')
+            shipping_address = data.get('shipping_address')
+            order_id = data.get('order_id')
+
+            if not all([full_name, email, phone, country, state, payment_method, total_amount, shipping_address]):
+                logger.warning('Missing required fields')
+                return JsonResponse({'error': 'Missing required fields'}, status=400) 
+            # Generate unique order_id if not provided
+            if order_id is None:
+                order_id = str(uuid.uuid4())
+                logger.info(f"Generate unique order_id: {order_id}")
+
+            if payment_method == 'mpesa':
+                payment_data = {
+                    'phone_number': phone,
+                    'amount': total_amount,
+                    'full_name': full_name,
+                    'email': email,
+                    'country': country,
+                    'state': state,
+                    'payment_method': payment_method,
+                    'order_id': order_id
+                }
+
+                factory = RequestFactory()
+                payment_request = factory.post('/dummy-url', data=json.dumps(payment_data), content_type='application/json')
+                payment_request.META = request.META.copy()
+                logger.info('Initiating Mpesa payment')
+                return initiate_payment(payment_request)
+            else:
+                order = Order.objects.create(
+                    full_name=full_name,
+                    email=email,
+                    phone=phone,
+                    country=country,
+                    state=state,
+                    payment_method=payment_method,
+                    total_amount=total_amount,
+                    shipping_address=shipping_address,
+                    order_id=order_id,
+                    status='PENDING'
+                )
+                logger.info('Order created successfully')
+                return JsonResponse({'status': 'success', 'order_id': order_id})
+
+        except Exception as e:
+            logger.error(f"Error creating order: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    else:
+        logger.warning('Invalid request method')
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)            
