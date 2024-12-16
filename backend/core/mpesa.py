@@ -12,7 +12,7 @@ from django.test import RequestFactory
 
 #create a logger
 logger = logging.getLogger(__name__)
-loggerr.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 # Create a file handler for logging
 file_handler = logging.FileHandler('mpesa.log')
@@ -59,7 +59,7 @@ def initiate_payment(request):
                 logger.warning('Amount is required')
                 return JsonResponse({'error': 'Amount is required'}, status=400)
 
-            amount = float(amount)
+            amount = int(amount)
             logger.debug(f'Phone number: {phone_number}, Amount: {amount}, Order Id: {order_id}')
 
             client = MpesaClient()
