@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+import uuid
 
 
 class User(models.Model):
@@ -50,13 +51,29 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+def generate_uuid():
+    return str(uuid.uuid4())
+
 class Order(models.Model):
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('PAID', 'Paid'),
-        ('CANCELLED', 'Cancelled'),
+        ('PENDING', 'pending'),
+        ('PAID', 'paid'),
+        ('CANCELLED', 'cancelled'),
     ]
-    order_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    order_id = models.CharField(max_length=100, unique=True, default=generate_uuid, null=True, blank=True)
+    email = models.EmailField(default='example@example.com')
+    phone = models.CharField(max_length=15)
+    country = models.CharField(max_length=100, default='Kenya')
+    payment_method = models.CharField(max_length=100)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    shipping_address = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.order_id
+    
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
