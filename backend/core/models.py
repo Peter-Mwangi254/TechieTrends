@@ -1,17 +1,93 @@
 from django.db import models
 from django.contrib.auth.models import User
 import uuid
+from django.utils import timezone
+from django.core.mail import EmailMessage
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from .tokens import account_activation_token
+from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin, Permission, Group
 
 
-class User(models.Model):
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, name, password=None):
+        if not email:
+            raise ValueError('Users must have an email address')
+
+        user = self.model(
+            email=self.normalize_email(email),
+            name=name,
+        )
+
+        user.set_password(password)
+        user.is_active = False
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, name, password=None):
+        user = self.create_user(
+            email=self.normalize_email(email),
+            name=name,
+            password=password,
+        )
+        user.is_admin = True
+        user.is_staff = True
+        user.is_superuser = True
+        user.is_active = True
+        user.save(using=self._db)
+        return user
+
+class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True, max_length=100)
-    password = models.CharField(max_length=100)
     is_vendor = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(auto_now_add=True)
+
+    objects = CustomUserManager()
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['name']
+
+
+
+    groups = models.ManyToManyField(
+        Group,
+        related_name = 'core_user_set', 
+        blank=True, 
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        verbose_name = ('group'),
+    )
+
+    user_permissions = models.ManyToManyField(
+        Permission,
+        blank=True,
+        related_name='core_user_permission',
+        help_text='Specific permissions for this user.',
+        verbose_name=('user permissions'),
+    )
 
     def __str__(self):
-        return self.name
+        return self.email
+    
+    def email_user(self, subject, message, from_email=None, **kwargs):
+        email = EmailMessage(subject, message, from_email, [self.email], **kwargs)
+        email.send()
+
+    def send_activation_email(self, request):
+        current_site = get_current_site(request)
+        mail_subject = 'Activate your account'
+        message = render_to_string('account_activation_email.html', {
+            'user': self,
+            'domain': current_site.domain,
+            'uid': urlsafe_base64_encode(force_bytes(self.pk)),
+            'token': account_activation_token.make_token(self),
+        })
+        self.email_user(mail_subject, message)    
 
 class Vendor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

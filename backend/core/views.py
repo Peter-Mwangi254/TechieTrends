@@ -1,4 +1,13 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from .serializers import UserSerializer
+from .tokens import account_activation_token
+from .models import User
+
 from .models import (User, Vendor, Category, Product, Order, OrderItem, Cart,
     CartItem, Shipping, Payment, Coupon, Review, Wishlist, Notification, Blog,
     Contact, FAQ, Analytics, Configurations, Tax, Subscription, Refund)
@@ -9,6 +18,65 @@ from .serializers import (UserSerializer, VendorSerializer, CategorySerializer,
     ReviewSerializer, WishlistSerializer, NotificationSerializer, BlogSerializer,
     ContactSerializer, FAQSerializer, AnalyticsSerializer, ConfigurationsSerializer,
     TaxSerializer, SubscriptionSerializer, RefundSerializer)
+
+
+# Authentication views
+
+class SignupView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        name = request.data.get('name')
+        password = request.data.get('password')
+        is_vendor = request.data.get('is_vendor', False)
+
+        if not email or not name or not password:
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.create_user(email=email, name=name, password=password, is_vendor=is_vendor)
+            user.is_vendor = is_vendor
+            user.save()
+            user.send_activation_email(request)
+            return Response({'message': 'User created successfully. Please confirm your email address to complete the registration'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        user = authenticate(request, email=email, password=password)
+
+        if user is not None:
+            if user.is_active:
+                login(request, user)
+                return Response({'message': 'Login successful'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Account is not activated. Please check your email'}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class LogoutView(APIView):
+    def post(self, request):
+        logout(request)
+        return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+
+class ActivateAccount(APIView):
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and account_activation_token.check_token(user, token):
+            user.is_active = True
+            user.save()
+            return Response({'message': 'Thank you for your email confirmation. Now you can login to your account.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Activation link is invalid!'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class UserViewSet(viewsets.ModelViewSet):
