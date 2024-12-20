@@ -62,7 +62,7 @@ class LogoutView(APIView):
         logout(request)
         return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
-class ActivateAccount(APIView):
+class ActivateAccountView(APIView):
     def get(self, request, uidb64, token):
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
