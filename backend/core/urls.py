@@ -10,7 +10,7 @@ from .views import (UserDetailsViewSet, VendorViewSet, CategoryViewSet, ProductV
 
 
 router = routers.DefaultRouter()
-router.register(r'users', UserViewSet)
+
 router.register(r'vendors', VendorViewSet)
 router.register(r'categories', CategoryViewSet)
 router.register(r'products', ProductViewSet)

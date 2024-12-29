@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from .serializers import UserSerializer
@@ -79,9 +80,15 @@ class ActivateAccountView(APIView):
 
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+class UserDetailsViewSet(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    # queryset = User.objects.all()
+    # serializer_class = UserSerializer
 
 class VendorViewSet(viewsets.ModelViewSet):
     queryset = Vendor.objects.all()
