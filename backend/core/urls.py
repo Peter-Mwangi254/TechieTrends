@@ -1,7 +1,7 @@
 from django.urls import path, include
 from .mpesa import mpesa_callback, create_order
 from rest_framework import routers
-from .views import (UserViewSet, VendorViewSet, CategoryViewSet, ProductViewSet,
+from .views import (UserDetailsViewSet, VendorViewSet, CategoryViewSet, ProductViewSet,
     OrderViewSet, OrderItemViewSet, CartViewSet, CartItemViewSet, ShippingViewSet,
     PaymentViewSet, CouponViewSet, ReviewViewSet, WishlistViewSet, NotificationViewSet,
     BlogViewSet, ContactViewSet, FAQViewSet, AnalyticsViewSet, ConfigurationsViewSet,
@@ -42,4 +42,5 @@ urlpatterns = [
     path('api/login/', LoginView.as_view(), name='login'),
     path('api/logout/', LogoutView.as_view(), name='logout'),
     path('api/activate/<uidb64>/<token>/', ActivateAccountView.as_view(), name='activate'),
+    path('api/auth/user', UserDetailsViewSet.as_view(), name='user-details'),
 ]
