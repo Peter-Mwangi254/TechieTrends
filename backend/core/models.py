@@ -12,13 +12,15 @@ from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, Permis
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, name, password=None):
+    def create_user(self, email, name, password=None, is_vendor=False, **extra_fields):
         if not email:
             raise ValueError('Users must have an email address')
 
         user = self.model(
             email=self.normalize_email(email),
             name=name,
+            is_vendor=is_vendor,
+            **extra_fields
         )
 
         user.set_password(password)

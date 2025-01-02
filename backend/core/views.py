@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, status
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.response import Response
@@ -8,7 +9,8 @@ from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from .serializers import UserSerializer
 from .tokens import account_activation_token
-from .models import User
+from .models import User, CustomUserManager
+
 
 from .models import (User, Vendor, Category, Product, Order, OrderItem, Cart,
     CartItem, Shipping, Payment, Coupon, Review, Wishlist, Notification, Blog,
@@ -24,23 +26,33 @@ from .serializers import (UserSerializer, VendorSerializer, CategorySerializer,
 
 # Authentication views
 
+logger = logging.getLogger(__name__)
+
 class SignupView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
+        logger.debug('SignupView called: %s', request.data)
         email = request.data.get('email')
         name = request.data.get('name')
         password = request.data.get('password')
         is_vendor = request.data.get('is_vendor', False)
 
         if not email or not name or not password:
+            logger.error('Signup Failed. All fields are required')
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if User.objects.filter(email=email).exists():
+            logger.error('Signup Failed. Email already exists')
+            return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            user = User.objects.create_user(email=email, name=name, password=password, is_vendor=is_vendor)
-            user.is_vendor = is_vendor
-            user.save()
-            user.send_activation_email(request)
+            user = CustomUserManager().create_user(email=email, name=name, password=password, is_vendor=is_vendor)
+            user.send_activation_email(request)  
+            logger.debug('User created successfully. Please confirm your email address to complete the registration: %s', user)
             return Response({'message': 'User created successfully. Please confirm your email address to complete the registration'}, status=status.HTTP_201_CREATED)
         except Exception as e:
+            logger.error('Signup Failed. %s', str(e))
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
