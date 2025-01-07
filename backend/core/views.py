@@ -38,24 +38,37 @@ class SignupView(APIView):
         password = request.data.get('password')
         is_vendor = request.data.get('is_vendor', False)
 
+        # Validate required fields
         if not email or not name or not password:
             logger.error('Signup Failed. All fields are required')
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Check if email already exists
         if User.objects.filter(email=email).exists():
             logger.error('Signup Failed. Email already exists')
             return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            user = CustomUserManager().create_user(email=email, name=name, password=password, is_vendor=is_vendor)
-            user.send_activation_email(request)  
+            # Use the User model's objects manager to create a user
+            user = User.objects.create_user(
+                email=email,
+                name=name,
+                password=password,
+                is_vendor=is_vendor
+            )
+
+            # Send activation email
+            user.send_activation_email(request)
+
             logger.debug('User created successfully. Please confirm your email address to complete the registration: %s', user)
             return Response({'message': 'User created successfully. Please confirm your email address to complete the registration'}, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error('Signup Failed. %s', str(e))
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 class LoginView(APIView):
+
+    
+
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')

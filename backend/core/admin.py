@@ -5,7 +5,7 @@ from .models import (User, Vendor, Category, Product, Order, OrderItem, Cart,
     Contact, FAQ, Analytics, Configurations, Tax, Subscription, Refund)
 
 class UserAdmin(BaseUserAdmin):
-    list_display = ('email', 'name', 'is_admin')
+    list_display = ('name', 'email', 'is_admin', 'is_active', 'is_staff')
     list_filter = ('is_admin',)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),

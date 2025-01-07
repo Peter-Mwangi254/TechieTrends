@@ -5,21 +5,24 @@ from django.utils import timezone
 from django.core.mail import EmailMessage
 from django.contrib.sites.shortcuts import get_current_site
 from django.template.loader import render_to_string
+from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from .tokens import account_activation_token
+from django.conf import settings
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin, Permission, Group
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, name, password=None, is_vendor=False, **extra_fields):
+    def create_user(self, email, name, password=None, **extra_fields):
         if not email:
             raise ValueError('Users must have an email address')
 
+        extra_fields.setdefault('is_vendor', False)
+        
         user = self.model(
             email=self.normalize_email(email),
             name=name,
-            is_vendor=is_vendor,
             **extra_fields
         )
 
@@ -83,16 +86,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     def send_activation_email(self, request):
         current_site = get_current_site(request)
         mail_subject = 'Activate your account'
-        message = render_to_string('account_activation_email.html', {
-            'user': self,
-            'domain': current_site.domain,
-            'uid': urlsafe_base64_encode(force_bytes(self.pk)),
-            'token': account_activation_token.make_token(self),
-        })
-        self.email_user(mail_subject, message)    
+        uid = urlsafe_base64_encode(force_bytes(self.pk))
+        token = account_activation_token.make_token(self)
+        activation_link = f"http://localhost:3000/verify-email/{uid}/{token}"
+        message = f"Hi {self.name},\n\nPlease click on the link below to activate your account:\n{activation_link}"    
+        send_mail(mail_subject, message, '', [self.email], fail_silently=False)
 
 class Vendor(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     bio = models.TextField()
     contact_details = models.TextField()
     bank_details = models.TextField()
@@ -159,7 +160,7 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
 
 class Cart(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cart', null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cart', null=True, blank=True)
     session_id = models.CharField(max_length=50, null=True, blank=True)
     item = models.ManyToManyField(Product, through='CartItem')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -193,18 +194,18 @@ class Coupon(models.Model):
 
 class Review(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
     rating = models.PositiveIntegerField()
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 class Wishlist(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlist')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wishlist')
     products = models.ManyToManyField(Product, related_name='wishlist')
 
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -212,7 +213,7 @@ class Blog(models.Model):
     title = models.CharField(max_length=100)
     slug = models.SlugField(max_length=100, unique=True)
     content = models.TextField()
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blog_posts')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blog_posts')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
